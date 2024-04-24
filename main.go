@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/sts"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 const MaxFileSize = 1024 * 1024 * 100 // 100MB
@@ -45,8 +47,8 @@ func setupRouter() *gin.Engine {
 	router.POST("/upload", handleUpload)
 	router.POST("/upload/chunk", handleChunkUpload)
 	router.POST("/upload/check/", handleCheckChunk) // 添加这行代码
-
 	router.POST("/upload/merge", handleCompleteUpload)
+	router.GET("/oss/stsToken", handleStsToken) // 实际产品中。这里要求登录才能调用。
 
 	return router
 }
@@ -221,4 +223,49 @@ func handleCheckChunk(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, gin.H{"exist": true})
 	}
+}
+
+var (
+	accessKeyID,
+	accessKeySecret,
+	roleArn string
+)
+
+func init() {
+	// 加载.env文件
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Failed to load .env file")
+	}
+
+	// 从环境变量中读取阿里云访问密钥
+	accessKeyID = os.Getenv("ACCESS_KEY_ID")
+	accessKeySecret = os.Getenv("ACCESS_KEY_SECRET")
+	roleArn = os.Getenv("ROLE_ARN")
+}
+
+func handleStsToken(c *gin.Context) {
+
+	// 创建STS客户端
+	client, err := sts.NewClientWithAccessKey("cn-beijing", accessKeyID, accessKeySecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create STS client"})
+		return
+	}
+
+	// 构建AssumeRole请求
+	request := sts.CreateAssumeRoleRequest()
+	request.Scheme = "https"
+	request.RoleArn = roleArn
+	request.RoleSessionName = "oss-upload-in-frontend"
+
+	// 发起AssumeRole请求
+	response, err := client.AssumeRole(request)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assume role"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"AccessKeyId": response.Credentials.AccessKeyId, "AccessKeySecret": response.Credentials.AccessKeySecret, "SecurityToken": response.Credentials.SecurityToken, "Expiration": response.Credentials.Expiration})
+
 }
