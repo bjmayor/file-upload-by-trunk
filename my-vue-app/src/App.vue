@@ -43,7 +43,7 @@
       <hr />
 
       <div>
-        <h1>文件直传(其实就是分片上传-并行)</h1>
+        <h1>文件直传</h1>
         <input type="file" @change="handleFileChange" />
         <button @click="uploadFileByOssDirect">Upload</button>
         <span
