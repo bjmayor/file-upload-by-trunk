@@ -92,8 +92,8 @@ strong {
 import OSS from "ali-oss";
 import axios from "axios"; // 添加这行代码
 const http = axios.create({
-  // baseURL: "http://localhost:8090", // directo to golang server
-  baseURL: "http://upload.demo.com", // use nginx to proxy
+  baseURL: "http://localhost:8090", // directo to golang server
+  // baseURL: "http://upload.demo.com", // use nginx to proxy
 });
 export default {
   data() {
@@ -336,7 +336,7 @@ export default {
       });
 
       const fileName = "demo/" + this.file.name;
-      const result = await client.put(fileName, this.file); // 初始化分片上传
+      const result = await client.put(fileName, this.file); //
       console.log("文件上传成功", result);
       const end = Date.now();
       this.cost5 = (end - start) / 1000;
