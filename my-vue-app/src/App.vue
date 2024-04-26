@@ -92,7 +92,8 @@ strong {
 import OSS from "ali-oss";
 import axios from "axios"; // 添加这行代码
 const http = axios.create({
-  baseURL: "http://localhost:8090", // 设置你的服务器地址
+  // baseURL: "http://localhost:8090", // directo to golang server
+  baseURL: "http://upload.demo.com", // use nginx to proxy
 });
 export default {
   data() {
@@ -127,11 +128,8 @@ export default {
       const formData = new FormData();
       formData.append("file", this.file);
       const start = Date.now();
-      fetch("http://localhost:8090/upload", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
+      http
+        .post("/upload", formData)
         .then((data) => {
           console.log(data);
           const end = Date.now();
@@ -338,9 +336,7 @@ export default {
       });
 
       const fileName = "demo/" + this.file.name;
-      const result = await client.multipartUpload(fileName, this.file, {
-        disabledMD5: false,
-      }); // 初始化分片上传
+      const result = await client.put(fileName, this.file); // 初始化分片上传
       console.log("文件上传成功", result);
       const end = Date.now();
       this.cost5 = (end - start) / 1000;
@@ -404,6 +400,7 @@ export default {
         alert("请选择文件");
         return;
       }
+
       const start = Date.now();
       const client = new OSS({
         accessKeyId: this.accessKeyId,
@@ -414,49 +411,66 @@ export default {
       });
 
       const fileName = "demo/" + this.file.name;
-      const fileSize = this.file.size;
-      const chunkSize = 1 * 1024 * 1024; // 设置每个切片的大小，这里设置为1MB
-      const totalChunks = Math.ceil(fileSize / chunkSize); // 计算切片总数
-      const parts = [];
-      const { uploadId } = await client.initMultipartUpload(fileName); // 初始化分片上传
-      const uploadChunk = async (i) => {
-        const start = i * chunkSize;
-        const end = Math.min(fileSize, start + chunkSize);
-        const partNumber = i + 1;
-
-        // 读取分片内容
-        const result = await client.uploadPart(
-          fileName,
-          uploadId,
-          partNumber,
-          this.file,
-          start,
-          end
-        );
-
-        parts[i] = {
-          etag: result.etag,
-          number: partNumber,
-        };
-      };
-
-      for (let i = 0; i < totalChunks; ) {
-        const chunkNumbers = Array.from(
-          { length: Math.min(5, totalChunks - i) },
-          (_, j) => i + j
-        );
-        i += chunkNumbers.length;
-        await Promise.all(chunkNumbers.map(uploadChunk));
-      }
-      console.log("所有分片上传完成", parts);
-      const result = await client.completeMultipartUpload(
-        fileName,
-        uploadId,
-        parts
-      ); // 完成分片上传
+      const result = await client.multipartUpload(fileName, this.file, {
+        disabledMD5: false,
+      }); // 初始化分片上传
       console.log("文件上传成功", result);
       const end = Date.now();
       this.cost7 = (end - start) / 1000;
+
+      //   const start = Date.now();
+      //   const client = new OSS({
+      //     accessKeyId: this.accessKeyId,
+      //     accessKeySecret: this.accessSerect,
+      //     stsToken: this.securityToken,
+      //     bucket: "bjmayor", // change to yours
+      //     region: "oss-cn-beijing", // change to yours
+      //   });
+
+      //   const fileName = "demo/" + this.file.name;
+      //   const fileSize = this.file.size;
+      //   const chunkSize = 1 * 1024 * 1024; // 设置每个切片的大小，这里设置为1MB
+      //   const totalChunks = Math.ceil(fileSize / chunkSize); // 计算切片总数
+      //   const parts = [];
+      //   const { uploadId } = await client.initMultipartUpload(fileName); // 初始化分片上传
+      //   const uploadChunk = async (i) => {
+      //     const start = i * chunkSize;
+      //     const end = Math.min(fileSize, start + chunkSize);
+      //     const partNumber = i + 1;
+
+      //     // 读取分片内容
+      //     const result = await client.uploadPart(
+      //       fileName,
+      //       uploadId,
+      //       partNumber,
+      //       this.file,
+      //       start,
+      //       end
+      //     );
+
+      //     parts[i] = {
+      //       etag: result.etag,
+      //       number: partNumber,
+      //     };
+      //   };
+
+      //   for (let i = 0; i < totalChunks; ) {
+      //     const chunkNumbers = Array.from(
+      //       { length: Math.min(5, totalChunks - i) },
+      //       (_, j) => i + j
+      //     );
+      //     i += chunkNumbers.length;
+      //     await Promise.all(chunkNumbers.map(uploadChunk));
+      //   }
+      //   console.log("所有分片上传完成", parts);
+      //   const result = await client.completeMultipartUpload(
+      //     fileName,
+      //     uploadId,
+      //     parts
+      //   ); // 完成分片上传
+      //   console.log("文件上传成功", result);
+      //   const end = Date.now();
+      //   this.cost7 = (end - start) / 1000;
     },
   },
 };
